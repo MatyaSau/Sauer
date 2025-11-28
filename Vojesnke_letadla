@@ -1,4 +1,4 @@
-vojensko_letouny_list = [
+vojenske_letouny_list = [
     ("F-22 Raptor", "1997", 2410),
     ("F-35A Lightning II", "2006", 1930),
     ("F-16 Fighting Falcon", "1974", 2414),
@@ -55,28 +55,50 @@ vojensko_letouny_list = [
 
 
 
-military_aircraft_list.append(("Boeing F-15EX Eagle II", "2021", 2655))
-
-
-for model, year, speed in military_aircraft_list:
-    print(model)
+vojenske_letouny_list.append(("Boeing F-15EX Eagle II", "2021", 2655))
 
 
 
-sezareno_podle_rychlosti = sorted(military_aircraft_list, key=lambda x: x[2], reverse=True)
+for model, _, _ in vojenske_letouny_list:
+    print(f"— {model} —\n")    
 
 
+print("Seřazeno podle rychlosti:")
+sezareno_podle_rychlosti = sorted(vojenske_letouny_list, key=lambda x: x[2], reverse=True)
+for model, year, speed in sezareno_podle_rychlosti:
+    print(f"{model} – {speed} km/h")
+
+print()
+
+print("Letadla, rychlejší než 2200 km/h:")
+rychle_a_zbesile = [i for i in vojenske_letouny_list if i[2] > 2200]
+for model, year, speed in rychle_a_zbesile:
+    print(f"{model} – {speed} km/h")
+
+fastest = max(vojenske_letouny_list, key=lambda x: x[2])
+print(f"Nejrychlejší je {fastest[0]} – {fastest[2]} km/h")
+print()
 
 
+prum_rychlost = sum([x[2] for x in vojenske_letouny_list]) / len(vojenske_letouny_list)
+print("Průměrná rychlost z celého sezanmu je", prum_rychlost)
+print()
 
 
+#GRAF
 
+import matplotlib.pyplot as plt
 
+jmena = [x[0] for x in vojenske_letouny_list]
+rychlosti = [x[2] for x in vojenske_letouny_list]
 
-
-
-
-
+plt.figure(figsize=(12, 6))
+plt.barh(jmena, rychlosti)
+plt.title("Maximální rychlosti bojových letadel (km/h)")
+plt.xlabel("Rychlost (km/h)")
+plt.ylabel("Letadlo")
+plt.tight_layout()
+plt.show()
 
 
 
