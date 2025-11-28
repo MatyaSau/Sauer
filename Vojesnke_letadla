@@ -1,0 +1,90 @@
+vojensko_letouny_list = [
+    ("F-22 Raptor", "1997", 2410),
+    ("F-35A Lightning II", "2006", 1930),
+    ("F-16 Fighting Falcon", "1974", 2414),
+    ("F/A-18E Super Hornet", "1995", 1915),
+    ("F-15E Strike Eagle", "1986", 2655),
+
+    ("Eurofighter Typhoon", "1994", 2495),
+    ("Dassault Rafale", "1986", 1912),
+    ("Saab JAS 39 Gripen", "1988", 2470),
+    ("Panavia Tornado IDS", "1974", 2400),
+
+    ("Sukhoi Su-35", "2008", 2400),
+    ("Sukhoi Su-57", "2010", 2600),
+    ("Sukhoi Su-27", "1982", 2500),
+    ("Mikoyan MiG-29", "1977", 2450),
+    ("Mikoyan MiG-31", "1975", 3000),
+
+    ("Chengdu J-10", "1998", 2350),
+    ("Chengdu J-20", "2011", 2100),
+    ("Shenyang J-11", "1998", 2500),
+
+    ("HAL Tejas", "2001", 2205),
+    ("KAI KF-21 Boramae", "2022", 1400),
+
+    ("McDonnell Douglas F-4 Phantom II", "1958", 2370),
+    ("Mikoyan MiG-21", "1955", 2230),
+    ("Lockheed F-104 Starfighter", "1954", 2400),
+
+    ("Northrop F-5E Tiger II", "1972", 1700),
+    ("Sukhoi Su-24", "1970", 1700),
+    ("Sukhoi Su-30SM", "2012", 2125),
+    ("Sukhoi Su-34", "1990", 1900),
+    ("Mikoyan MiG-23", "1967", 2500),
+
+    ("McDonnell Douglas AV-8B Harrier II", "1981", 1085),
+    ("Fairchild Republic A-10 Thunderbolt II", "1972", 706),
+    ("Boeing F-15C", "1979", 2655),
+    ("Boeing F/A-18C Hornet", "1978", 1915),
+    ("Lockheed Martin F-117 Nighthawk", "1981", 1035),
+
+    ("Grumman F-14 Tomcat", "1970", 2485),
+    ("Dassault Mirage 2000", "1978", 2336),
+    ("Dassault Mirage III", "1956", 2200),
+    ("Saab 35 Draken", "1955", 2124),
+    ("Saab 37 Viggen", "1967", 2230),
+
+    ("Tupolev Tu-22M3 Backfire", "1977", 2300),
+    ("Shenyang J-8", "1969", 2330),
+    ("Northrop Grumman B-2 Spirit", "1989", 1010),
+    ("Rockwell B-1B Lancer", "1984", 1334),
+    ("Tupolev Tu-160 Blackjack", "1981", 2200)
+]
+
+
+
+
+military_aircraft_list.append(("Boeing F-15EX Eagle II", "2021", 2655))
+
+
+for model, year, speed in military_aircraft_list:
+    print(model)
+
+
+
+sezareno_podle_rychlosti = sorted(military_aircraft_list, key=lambda x: x[2], reverse=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
