@@ -1,3 +1,5 @@
+import datetime
+
 vojenske_letouny_list = [
     ("F-22 Raptor", "1997", 2410),
     ("F-35A Lightning II", "2006", 1930),
@@ -85,23 +87,109 @@ print("Průměrná rychlost z celého sezanmu je", prum_rychlost)
 print()
 
 
-#GRAF
+#GRAFY   (ChatGPT pomohl VELMI)
 
+#Graf 1
 import matplotlib.pyplot as plt
 
 jmena = [x[0] for x in vojenske_letouny_list]
 rychlosti = [x[2] for x in vojenske_letouny_list]
 
-plt.figure(figsize=(12, 6))
-plt.barh(jmena, rychlosti)
-plt.title("Maximální rychlosti bojových letadel (km/h)")
-plt.xlabel("Rychlost (km/h)")
-plt.ylabel("Letadlo")
+pomaly = len([x for x in rychlosti if x < 1500])
+stredni = len([x for x in rychlosti if 1500 <= x < 2200])
+rychle = len([x for x in rychlosti if 2200 <= x < 2600])
+extremni = len([x for x in rychlosti if x >= 2600])
+
+labels = [
+    "Pomalé (<1500 km/h)",
+    "Středně rychlé (1500–2199 km/h)",
+    "Rychlé (2200–2599 km/h)",
+    "Extrémně rychlé (≥2600 km/h)"
+]
+
+sizes = [pomaly, stredni, rychle, extremni]
+
+plt.figure(figsize=(6, 6))
+plt.pie(
+    sizes,
+    labels=labels,
+    autopct="%1.1f%%",
+    startangle=140,
+    explode=(0, 0, 0.1, 0.1)
+)
+plt.title("Rozdělení vojenských letadel podle rychlosti")
+plt.axis("equal")
+plt.show()
+
+
+#Graf 2
+top10 = sorted(vojenske_letouny_list, key=lambda x: x[2], reverse=True)[:10]
+top10_jmena = [x[0] for x in top10]
+top10_rychlosti = [x[2] for x in top10]
+
+plt.figure(figsize=(10, 6))
+plt.barh(top10_jmena, top10_rychlosti)
+plt.title("TOP 10 nejrychlejších vojenských letadel")
+plt.xlabel("Maximální rychlost (km/h)")
+plt.gca().invert_yaxis()
 plt.tight_layout()
 plt.show()
 
 
+#Graf 3
+import matplotlib.pyplot as plt
+from datetime import datetime
 
+aktualni_rok = datetime.now().year
+
+# stáří letadel
+stari = [aktualni_rok - int(x[1]) for x in vojenske_letouny_list]
+
+poslednich_10 = len([s for s in stari if s <= 10])
+od_11_do_20 = len([s for s in stari if 11 <= s <= 20])
+od_21_do_30 = len([s for s in stari if 21 <= s <= 30])
+od_31_do_50 = len([s for s in stari if 31 <= s <= 50])
+nad_50 = len([s for s in stari if s > 50])
+
+
+labels = [
+    "Posledních 10 let",
+    "11–20 let",
+    "21–30 let",
+    "31–50 let",
+    "Více než 50 let"
+]
+
+sizes = [
+    poslednich_10,
+    od_11_do_20,
+    od_21_do_30,
+    od_31_do_50,
+    nad_50
+]
+
+colors = [
+    "#2ecc71",  # zelená
+    "#3498db",  # modrá
+    "#f1c40f",  # žlutá
+    "#e67e22",  # oranžová
+    "#e74c3c"   # červená
+]
+
+explode = (0.1, 0, 0, 0, 0)
+
+plt.figure(figsize=(7, 7))
+plt.pie(
+    sizes,
+    labels=labels,
+    colors=colors,
+    autopct="%1.1f%%",
+    startangle=140,
+    explode=explode
+)
+plt.title("Rozdělení vojenských letadel podle stáří")
+plt.axis("equal")
+plt.show()
 
 
 
