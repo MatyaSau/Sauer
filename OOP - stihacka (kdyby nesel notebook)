@@ -1,0 +1,35 @@
+class Stihacka(letadlo):
+    def __init__(self, cislo, typ, max_rychlost, weapon_system):
+        super().__init__(cislo, typ, max_rychlost)
+        self.weapon_system = weapon_system
+        print(f"Stíhačka {self.typ} číslo {self.cislo} je vybavena systémem {self.weapon_system}.")
+
+    def engage_target(self, target):
+        if self.aktualni_rychlost > 500:
+            return f"Stíhačka {self.typ} s číslem {self.cislo} úspěšně zapojuje cíl: {target} pomocí {self.weapon_system}!"
+        else:
+            return f"Stíhačka {self.typ} musí zrychlit, aby mohla zapojit cíl: {target}. Aktuální rychlost: {self.aktualni_rychlost} km/h."
+
+    
+    def zrychli(self, o_kolik):
+        nova_rychlost = self.aktualni_rychlost + o_kolik * 1.5 
+        if nova_rychlost <= self.max_rychlost:
+            self.aktualni_rychlost = nova_rychlost
+            print(f"Stíhačka {self.typ} tryskově zrychluje na {self.aktualni_rychlost} km/h!")
+        else:
+            self.aktualni_rychlost = self.max_rychlost
+            print(f"Pozor! Stíhačka {self.typ} dosáhla konstrukčního limitu rychlosti {self.max_rychlost} km/h!!")
+
+# instance
+my_boeing = Boeing(747, "Boeing", 920, 400)
+my_fighter = Stihacka(22, "F-22 Raptor", 2400, "AIM-120 AMRAAM")
+
+print("\n--- Testování Boeing ---")
+print(my_boeing.zrychli(300))
+print(my_boeing.zrychli(500))
+
+print("\n--- Testování Stíhačky ---")
+print(my_fighter.zrychli(200)) 
+print(my_fighter.engage_target("nepřátelské letadlo"))
+print(my_fighter.zrychli(1000))
+print(my_fighter.engage_target("nepřátelské letadlo"))
