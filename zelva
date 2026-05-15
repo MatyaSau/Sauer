@@ -1,1 +1,87 @@
+# obrazek turtle 1
+from ColabTurtle.Turtle import *
+import random
+
+initializeTurtle()
+speed(13)
+bgcolor("black")
+hideturtle()
+
+colors = ["white", "yellow", "lightblue", "pink", "violet"]
+
+def star(size):
+    pendown()
+    for _ in range(5):
+        forward(size)
+        right(144)
+    penup()
+
+penup()
+
+for i in range(80):   # počet hvězd
+    x = random.randint(0, 900)   # kladné x
+    y = random.randint(0, 900)   # kladné y
+    size = random.randint(5, 15)
+
+    goto(x, y)
+    setheading(random.randint(0, 360))
+    pencolor(random.choice(colors))
+    star(size)
+
+# Obrazek turtle 2
+
+from ColabTurtle.Turtle import *
+import random
+
+
+initializeTurtle()
+speed(13)
+bgcolor("black")
+hideturtle()
+penup()
+
+
+colors_star = ["white", "yellow", "lightblue", "pink", "violet"]
+
+def star(size):
+    pendown()
+    for _ in range(5):
+        forward(size)
+        right(144)
+    penup()
+
+
+for i in range(40):  
+    x = random.randint(0, 800)   
+    y = random.randint(0, 800)   
+    size = random.randint(5, 15)
+
+    goto(x, y)
+    setheading(random.randint(0, 360))
+    pencolor(random.choice(colors_star))
+    star(size)
+
+
+def mandala(center_x, center_y):
+    goto(center_x, center_y)
+    setheading(0)
+    size = 5
+    colors_mandala = ["red", "orange", "yellow", "green", "cyan", "blue", "purple", "magenta"]
+
+    for i in range(60):  
+        pencolor(colors_mandala[i % len(colors_mandala)])
+        pendown()
+        for _ in range(4):  
+            forward(size)
+            right(90)
+        penup()
+        right(15)  
+        size += 2
+
+
+mandala(350, 300)  
+
+
+
+
 
