@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D20 Hrací kostka z animací</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Import Google Font pro elegantní RPG vzhled */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #1e1e2f 0%, #0f0f18 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .rpg-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Vizuální tvar dvacetistěnu (D20 hexagon/icosahedron silueta) */
+        .d20-dice {
+            clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+            background: linear-gradient(135deg, #991b1b 0%, #450a0a 100%);
+            box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .d20-dice.crit-success {
+            background: linear-gradient(135deg, #15803d 0%, #052e16 100%);
+            box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+        }
+
+        .d20-dice.crit-fail {
+            background: linear-gradient(135deg, #b91c1c 0%, #450a0a 100%);
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+        }
+
+        /* Plynulá CSS animace hodu kostkou */
+        @keyframes rollingAnimation {
+            0% { transform: scale(1) rotate(0deg) translateY(0); }
+            15% { transform: scale(1.1) rotate(-12deg) translateY(-10px); }
+            30% { transform: scale(0.92) rotate(12deg) translateY(6px); }
+            45% { transform: scale(1.08) rotate(-8deg) translateY(-6px); }
+            60% { transform: scale(0.96) rotate(6deg) translateY(3px); }
+            75% { transform: scale(1.04) rotate(-3deg) translateY(-2px); }
+            100% { transform: scale(1) rotate(0deg) translateY(0); }
+        }
+
+        .rolling {
+            animation: rollingAnimation 0.8s ease-in-out infinite;
+        }
+
+        /* Tlačítkový stav disabled */
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+
+    <main class="w-full max-w-md bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl text-center relative overflow-hidden">
+        
+        <!-- Nadpis -->
+        <h1 class="rpg-title text-3xl font-extrabold text-amber-400 tracking-wider mb-1">
+            D20 Kostka
+        </h1>
+        <p class="text-xs text-slate-400 mb-6 uppercase tracking-widest">
+            RPG Generátor Náhody
+        </p>
+
+        <!-- Zobrazení D20 Kostky -->
+        <div class="relative my-8 flex justify-center items-center">
+            <div id="dice" onclick="hodKostkou()" class="d20-dice w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center cursor-pointer select-none border-t border-red-400/30">
+                <span id="diceValue" class="rpg-title text-5xl sm:text-6xl font-extrabold text-amber-100 drop-shadow-md">
+                    20
+                </span>
+            </div>
+        </div>
+
+        <!-- Výsledkový popisek (Kritický nezdar / Zásah) -->
+        <div id="rollStatus" class="h-8 mb-4 flex items-center justify-center text-sm font-semibold text-amber-300 transition-opacity duration-200 opacity-0">
+            Příprava k hodu...
+        </div>
+
+        <!-- Tlačítko pro hod -->
+        <button id="rollBtn" onclick="hodKostkou()" class="w-full py-3.5 px-6 bg-gradient-to-r from-red-700 to-amber-700 hover:from-red-600 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg hover:shadow-red-900/40 transform active:scale-95 transition-all duration-150 text-base uppercase tracking-wider border border-amber-500/30">
+            Hodit kostkou (D20)
+        </button>
+
+        <!-- Historie hodů -->
+        <div class="mt-8 pt-6 border-t border-slate-800 text-left">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                    Historie hodů
+                </span>
+                <button onclick="vycistitHistorii()" class="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                    Vymazat
+                </button>
+            </div>
+            <div id="historyList" class="flex flex-wrap gap-2 max-h-24 overflow-y-auto pr-1">
+                <span class="text-xs text-slate-500 italic">Zatím žádné hody</span>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* JAVASCRIPT: Logika aplikace a animací */
+        let jeHazen0 = false;
+        let historie = [];
+
+        function hodKostkou() {
+            // Zabránění opakovanému klikání během probíhající animace
+            if (jeHazen0) return;
+
+            jeHazen0 = true;
+            const dice = document.getElementById("dice");
+            const diceValue = document.getElementById("diceValue");
+            const rollBtn = document.getElementById("rollBtn");
+            const rollStatus = document.getElementById("rollStatus");
+
+            // 1. Zablokování tlačítka a zahájení animace
+            rollBtn.disabled = true;
+            rollBtn.textContent = "Házím...";
+            dice.classList.add("rolling");
+            dice.classList.remove("crit-success", "crit-fail");
+            rollStatus.classList.add("opacity-0");
+
+            // 2. Rychlé proměňování čísel na kostce (flicker efekt)
+            const delkaAnimace = 800; // v milisekundách
+            const intervalFlicker = 40; // zrychlení změny čísel
+            
+            const flickerTimer = setInterval(() => {
+                const nahodneCislo = Math.floor(Math.random() * 20) + 1;
+                diceValue.textContent = nahodneCislo;
+            }, intervalFlicker);
+
+            // 3. Ukončení animace a stanovení finálního výsledku
+            setTimeout(() => {
+                clearInterval(flickerTimer);
+
+                // Finální náhodné číslo od 1 do 20
+                const finalniVysledek = Math.floor(Math.random() * 20) + 1;
+                diceValue.textContent = finalniVysledek;
+
+                // Odstranění animace zatřesení
+                dice.classList.remove("rolling");
+
+                // Vyhodnocení specialit (Kritický zásah / Kritický nezdar)
+                if (finalniVysledek === 20) {
+                    dice.classList.add("crit-success");
+                    rollStatus.textContent = "✨ KRITICKÝ ZÁSAH! (20)";
+                    rollStatus.className = "h-8 mb-4 flex items-center justify-center text-sm font-bold text-green-400 transition-opacity duration-200 opacity-100";
+                } else if (finalniVysledek === 1) {
+                    dice.classList.add("crit-fail");
+                    rollStatus.textContent = "💀 KRITICKÝ NEZDAR! (1)";
+                    rollStatus.className = "h-8 mb-4 flex items-center justify-center text-sm font-bold text-red-400 transition-opacity duration-200 opacity-100";
+                } else {
+                    rollStatus.textContent = `Hozeno: ${finalniVysledek}`;
+                    rollStatus.className = "h-8 mb-4 flex items-center justify-center text-sm font-semibold text-amber-200 transition-opacity duration-200 opacity-100";
+                }
+
+                // Přidání výsledku do historie
+                pridatDoHistorie(finalniVysledek);
+
+                // Obnovení funkčnosti tlačítka
+                rollBtn.disabled = false;
+                rollBtn.textContent = "Hodit kostkou (D20)";
+                jeHazen0 = false;
+
+            }, delkaAnimace);
+        }
+
+        function pridatDoHistorie(vysledek) {
+            historie.unshift(vysledek);
+            if (historie.length > 10) historie.pop(); // Udržujeme max 10 hodů
+
+            const historyList = document.getElementById("historyList");
+            historyList.innerHTML = "";
+
+            historie.forEach(hod => {
+                const badge = document.createElement("span");
+                let colorClass = "bg-slate-800 text-slate-300 border-slate-700";
+
+                if (hod === 20) {
+                    colorClass = "bg-green-950 text-green-300 border-green-600 font-bold";
+                } else if (hod === 1) {
+                    colorClass = "bg-red-950 text-red-300 border-red-600 font-bold";
+                }
+
+                badge.className = `px-2.5 py-1 text-xs rounded-lg border ${colorClass} transition-all duration-200`;
+                badge.textContent = hod;
+                historyList.appendChild(badge);
+            });
+        }
+
+        function vycistitHistorii() {
+            historie = [];
+            const historyList = document.getElementById("historyList");
+            historyList.innerHTML = '<span class="text-xs text-slate-500 italic">Zatím žádné hody</span>';
+        }
+    </script>
+</body>
+</html>
