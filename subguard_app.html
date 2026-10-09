@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="cs" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubGuard - Hlídač zkušebních lhůt a předplatných</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f5ff',
+                            100: '#e0ebff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        darkcard: '#1e293b',
+                        darkbg: '#0f172a'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom CSS & Utilities -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+        }
+
+        .pulse-urgent {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .badge-glow-emerald {
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+        }
+        .badge-glow-indigo {
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-3.5">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-300">
+                            SubGuard
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">CZ</span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Chytrý hlídač předplatných & trial období</p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center flex-wrap gap-2.5">
+                
+                <!-- Browser Notification Toggle -->
+                <button id="notif-toggle-btn" onclick="toggleNotifications()" class="flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-medium bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                    <i id="notif-icon" class="fa-regular fa-bell"></i>
+                    <span id="notif-text" class="hidden md:inline">Upozornění: Vypnuto</span>
+                </button>
+
+                <!-- Direct Cancel Guide Button -->
+                <button onclick="openGuideModal()" class="flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-medium bg-slate-800/80 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 transition">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span class="hidden sm:inline">Návody ke zrušení</span>
+                </button>
+
+                <!-- AI Email Parser Button -->
+                <button onclick="openAiModal()" class="flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-purple-900/40 to-indigo-900/40 hover:from-purple-800/50 hover:to-indigo-800/50 text-purple-200 border border-purple-500/30 transition">
+                    <i class="fa-solid fa-wand-magic-sparkles text-purple-400"></i>
+                    <span class="hidden sm:inline">AI Sken e-mailu</span>
+                </button>
+
+                <!-- Quick Add Preset -->
+                <button onclick="openCatalogModal()" class="flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition shadow-sm">
+                    <i class="fa-solid fa-grid-2-plus text-indigo-400"></i>
+                    <span>Katalog</span>
+                </button>
+
+                <!-- Add New Custom Button -->
+                <button onclick="openAddModal()" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 transition transform active:scale-95">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Přidat službu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        <!-- KPI METRICS GRID -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Stat Card 1: Total Monthly Expense -->
+            <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl"></div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Měsíční náklady</span>
+                    <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="stat-total-monthly" class="text-2xl font-extrabold text-white tracking-tight">0 Kč</div>
+                    <p class="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                        <i class="fa-solid fa-calculator text-slate-500"></i>
+                        <span>Aktivní placená předplatná</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stat Card 2: Active Trials Count -->
+            <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl"></div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Aktivní Trialy</span>
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="stat-active-trials" class="text-2xl font-extrabold text-white tracking-tight">0</div>
+                    <p class="text-xs text-amber-400/90 mt-1 flex items-center gap-1">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Probíhající zkušební lhůty</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stat Card 3: Urgent Expiring Soon -->
+            <div id="stat-card-urgent" class="glass-card rounded-2xl p-5 relative overflow-hidden transition-all duration-300">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl"></div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Končí do 3 dnů</span>
+                    <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="stat-ending-soon" class="text-2xl font-extrabold text-white tracking-tight">0</div>
+                    <p class="text-xs text-rose-400/90 mt-1 flex items-center gap-1">
+                        <i class="fa-solid fa-bell-ring"></i>
+                        <span>Vyžaduje rychlou akci</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stat Card 4: Total Money Saved -->
+            <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Celkem ušetřeno</span>
+                    <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 badge-glow-emerald">
+                        <i class="fa-solid fa-piggy-bank"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="stat-total-saved" class="text-2xl font-extrabold text-emerald-400 tracking-tight">0 Kč</div>
+                    <p class="text-xs text-emerald-500/90 mt-1 flex items-center gap-1">
+                        <i class="fa-solid fa-check-double"></i>
+                        <span>Díky včasnému zrušení</span>
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- DASHBOARD BODY: TWO COLUMNS (MAIN LIST + ANALYTICS/PRESETS) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT/MAIN COLUMN: SUBSCRIPTION & TRIALS MANAGER -->
+            <section class="lg:col-span-8 space-y-4">
+                
+                <!-- Controls Header: Filters, Search & View Options -->
+                <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                    
+                    <!-- Filter Tabs -->
+                    <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-medium overflow-x-auto max-w-full">
+                        <button onclick="setFilter('all')" id="filter-tab-all" class="filter-btn px-3 py-1.5 rounded-lg transition bg-indigo-600 text-white shadow-sm">
+                            Vše (<span id="cnt-all">0</span>)
+                        </button>
+                        <button onclick="setFilter('active')" id="filter-tab-active" class="filter-btn px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">
+                            Aktivní (<span id="cnt-active">0</span>)
+                        </button>
+                        <button onclick="setFilter('urgent')" id="filter-tab-urgent" class="filter-btn px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                            Končí brzy (<span id="cnt-urgent">0</span>)
+                        </button>
+                        <button onclick="setFilter('cancelled')" id="filter-tab-cancelled" class="filter-btn px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">
+                            Zrušené (<span id="cnt-cancelled">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative flex-grow sm:flex-grow-0 sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="text" id="search-input" oninput="renderSubscriptions()" placeholder="Hledat podle názvu..." 
+                               class="w-full pl-8 pr-3 py-1.5 bg-slate-900/90 border border-slate-700/70 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                </div>
+
+                <!-- Subscriptions List Container -->
+                <div id="subscriptions-container" class="space-y-3">
+                    <!-- Cards will be populated dynamically via JavaScript -->
+                </div>
+
+                <!-- Empty State Placeholder -->
+                <div id="empty-state" class="hidden glass-panel rounded-2xl p-12 text-center space-y-4">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-2xl">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-semibold text-slate-200">Žádná předplatná nenalezena</h3>
+                        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Zatím jste nepřidali žádné položky odpovídající vybranému filtru. Můžete vybrat z katalogu nebo přidat vlastní.</p>
+                    </div>
+                    <div class="flex justify-center gap-3 pt-2">
+                        <button onclick="openCatalogModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition">
+                            Procházet katalog
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- RIGHT COLUMN: ANALYTICS, QUICK ADD & UTILITIES -->
+            <aside class="lg:col-span-4 space-y-6">
+                
+                <!-- Category Breakdown Chart Card -->
+                <div class="glass-panel rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-indigo-400"></i>
+                            Rozložení výdajů
+                        </h3>
+                        <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">Dle kategorií</span>
+                    </div>
+                    <div class="relative h-48 flex items-center justify-center">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Quick Catalog Grid Widget -->
+                <div class="glass-panel rounded-2xl p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-amber-400"></i>
+                            Rychlé přidání z katalogu
+                        </h3>
+                        <button onclick="openCatalogModal()" class="text-xs text-indigo-400 hover:underline">Vše</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2.5" id="sidebar-preset-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Data Management & Backups Card -->
+                <div class="glass-panel rounded-2xl p-5 space-y-3">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-database text-slate-400"></i>
+                        Správa dat & Záloha
+                    </h3>
+                    <p class="text-xs text-slate-400">Vaše data jsou bezpečně uložena v tomto prohlížeči. Můžete je vyexportovat nebo obnovit vzorová data.</p>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="exportData()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-download text-slate-400"></i>
+                            <span>Export (JSON)</span>
+                        </button>
+                        <button onclick="resetDemoData()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-rotate-left text-slate-400"></i>
+                            <span>Demo data</span>
+                        </button>
+                    </div>
+                </div>
+
+            </aside>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800/80 bg-slate-950/60 py-6 px-4 text-center text-xs text-slate-500 mt-12">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-shield-halved text-indigo-500"></i>
+                <span class="font-semibold text-slate-400">SubGuard CZ</span>
+                <span>&copy; 2026. Všechna data zůstávají v bezpečí vašeho zařízení.</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="#" onclick="openGuideModal(); return false;" class="hover:text-indigo-400 transition">Jak rušit předplatná</a>
+                <span>&bull;</span>
+                <span class="text-slate-600">Verze 2.4</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODALS SECTION -->
+
+    <!-- 1. ADD / EDIT SUBSCRIPTION MODAL -->
+    <div id="add-edit-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8 transform transition-all">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                        <i id="modal-icon" class="fa-solid fa-plus"></i>
+                    </div>
+                    <h3 id="modal-title" class="text-base font-bold text-white">Přidat nové předplatné</h3>
+                </div>
+                <button onclick="closeAddModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form -->
+            <form id="sub-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="form-sub-id" value="">
+
+                <!-- Service Name & Icon Picker -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="sm:col-span-2 space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Název služby *</label>
+                        <input type="text" id="form-name" required placeholder="např. ChatGPT Plus, Netflix" 
+                               class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Kategorie *</label>
+                        <select id="form-category" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                            <option value="Zábava">Zábava</option>
+                            <option value="AI & Práce">AI & Práce</option>
+                            <option value="Fitness & Zdraví">Fitness</option>
+                            <option value="Software & Cloud">Software</option>
+                            <option value="Vzdělávání">Vzdělávání</option>
+                            <option value="Ostatní">Ostatní</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Price & Currency & Billing Cycle -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Částka *</label>
+                        <input type="number" id="form-price" step="0.01" required placeholder="299" 
+                               class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Měna *</label>
+                        <select id="form-currency" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                            <option value="CZK">CZK (Kč)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="USD">USD ($)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Fakturace *</label>
+                        <select id="form-cycle" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                            <option value="trial">Jednorázový Trial</option>
+                            <option value="monthly">Měsíčně</option>
+                            <option value="yearly">Ročně</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Type (Trial or Active Subscription) & Expiration Date -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Stav služby *</label>
+                        <select id="form-status" onchange="updateFormStatusHelp()" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                            <option value="trial">Aktivní Trial (Zkušební verze)</option>
+                            <option value="active">Trvalé předplatné</option>
+                            <option value="cancelled">Zrušeno (Ušetřeno)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label id="form-date-label" class="block text-xs font-medium text-slate-300">Konec trialu / Příští platba *</label>
+                        <input type="date" id="form-date" required 
+                               class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                </div>
+
+                <!-- Reminder Lead Days & Direct Cancel Link -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div class="space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Upozornění v předstihu</label>
+                        <select id="form-remind" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                            <option value="1">1 den předem</option>
+                            <option value="2">2 dny předem</option>
+                            <option value="3" selected>3 dny předem</option>
+                            <option value="7">7 dní předem</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2 space-y-1">
+                        <label class="block text-xs font-medium text-slate-300">Přímý odkaz ke zrušení (URL)</label>
+                        <input type="url" id="form-cancel-url" placeholder="https://..." 
+                               class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition">
+                    </div>
+                </div>
+
+                <!-- Notes / Remarks -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-medium text-slate-300">Poznámka / Instrukce</label>
+                    <textarea id="form-notes" rows="2" placeholder="např. Zrušit v nastavení účtu Apple ID..." 
+                              class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition resize-none"></textarea>
+                </div>
+
+                <!-- Submit Buttons -->
+                <div class="pt-3 flex items-center justify-end space-x-3 border-t border-slate-800">
+                    <button type="button" onclick="closeAddModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
+                        Zrušit
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 transition">
+                        Uložit službu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. FULL CATALOG PRESET MODAL -->
+    <div id="catalog-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel bg-slate-900 border border-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden my-8 transform transition-all">
+            
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-grid-2-plus text-indigo-400"></i>
+                        Katalog oblíbených služeb
+                    </h3>
+                    <p class="text-xs text-slate-400">Přidání jedním kliknutím s předpřipravenými storno odkazy a výchozí trváním trialu.</p>
+                </div>
+                <button onclick="closeCatalogModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[70vh] overflow-y-auto" id="full-catalog-grid">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div class="px-6 py-3 bg-slate-950/50 border-t border-slate-800 text-right">
+                <button onclick="closeCatalogModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
+                    Zavřít
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. AI / SMART EMAIL TEXT PARSER MODAL -->
+    <div id="ai-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel bg-slate-900 border border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden my-8 transform transition-all">
+            
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">AI Automatické rozpoznání e-mailu</h3>
+                        <p class="text-xs text-slate-400">Vložte text potvrzovacího e-mailu z registraci služby</p>
+                    </div>
+                </div>
+                <button onclick="closeAiModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-300">
+                    Zkopírujte a vložte text potvrzení o aktivaci trialu nebo předplatného. Aplikace automaticky detekuje <strong>název služby, datum expirace a částku</strong>.
+                </p>
+
+                <textarea id="ai-email-text" rows="6" 
+                          placeholder="Příklad: Děkujeme za aktivaci zkušební verze Canva Pro na 14 dní zdarma. Vaše zkušební období končí 25. 10. 2026. Poté vám strhneme poplatek 329 Kč měsíčně." 
+                          class="w-full px-3 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 transition resize-none"></textarea>
+
+                <div class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 text-[11px] text-purple-300 flex items-start gap-2">
+                    <i class="fa-solid fa-lightbulb text-amber-400 mt-0.5"></i>
+                    <span>Tato analýza probíhá výhradně lokálně ve vašem prohlížeči, žádný text se neodesílá na cizí servery.</span>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-950/50 border-t border-slate-800 flex items-center justify-end space-x-3">
+                <button onclick="closeAiModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
+                    Zrušit
+                </button>
+                <button onclick="parseEmailText()" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/30 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Provést AI analýzu</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. DIRECT CANCELLATION GUIDES MODAL -->
+    <div id="guide-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden my-8 transform transition-all">
+            
+            <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-indigo-400"></i>
+                    Průvodce: Jak správně zrušit předplatné
+                </h3>
+                <button onclick="closeGuideModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5 text-xs text-slate-300 max-h-[70vh] overflow-y-auto">
+                
+                <!-- iOS Guide -->
+                <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-brands fa-apple text-slate-300"></i>
+                        Zrušení na iPhone / iPad (App Store)
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-1 pl-1 text-slate-300">
+                        <li>Otevřete aplikaci <strong>Nastavení</strong> na svém iPhone.</li>
+                        <li>Klepněte na svoje **jméno (Apple ID)** nahoře.</li>
+                        <li>Zvolte možnost <strong>Předplatná</strong>.</li>
+                        <li>Vyberte službu, kterou chcete ukončit, a klepněte na **Zrušit předplatné**.</li>
+                    </ol>
+                </div>
+
+                <!-- Android Guide -->
+                <div class="bg-slate-950/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                        <i class="fa-brands fa-google-play text-emerald-400"></i>
+                        Zrušení na Androidu (Google Play)
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-1 pl-1 text-slate-300">
+                        <li>Otevřete aplikaci <strong>Google Play Store</strong>.</li>
+                        <li>Klepněte na ikonu vašeho profilu vpravo nahoře.</li>
+                        <li>Zvolte **Platby a předplatná** &rarr; **Předplatná**.</li>
+                        <li>Vyberte požadovanou aplikaci a klikněte na **Zrušit předplatné**.</li>
+                    </ol>
+                </div>
+
+                <!-- Web Dark Patterns Advice -->
+                <div class="bg-indigo-950/30 p-4 rounded-xl border border-indigo-800/40 space-y-2">
+                    <h4 class="font-bold text-indigo-300 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-user-ninja text-amber-400"></i>
+                        Pozor na tzv. „Dark Patterns“ u webových služeb
+                    </h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        Některé webové služby schovávají tlačítko pro zrušení hluboko do podnabídek (např. *Nastavení účtu &rarr; Fakturace &rarr; Změnit plán &rarr; Zrušit*).
+                        Aplikace <strong>SubGuard</strong> pro vás uchovává přímé storno odkazy k nejpopulárnějším službám, které vás zavedou přímo k tlačítku potvrzení.
+                    </p>
+                </div>
+
+            </div>
+
+            <div class="px-6 py-3 bg-slate-950/50 border-t border-slate-800 text-right">
+                <button onclick="closeGuideModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition">
+                    Rozumím
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. CUSTOM CONFIRMATION DIALOG -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-circle-question"></i>
+                </div>
+                <div>
+                    <h3 id="confirm-title" class="text-sm font-bold text-white">Potvrzení akce</h3>
+                    <p id="confirm-message" class="text-xs text-slate-400 mt-0.5">Opravdu si přejete tuto akci provést?</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-end space-x-3 pt-2">
+                <button id="confirm-btn-cancel" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">
+                    Zrušit
+                </button>
+                <button id="confirm-btn-ok" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition">
+                    Potvrdit
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+
+    <!-- JAVASCRIPT LOGIC & STATE MANAGEMENT -->
+    <script>
+        // GLOBAL STATE & DATABASE PRESETS
+        const STORAGE_KEY = 'subguard_subscriptions_v2';
+        const NOTIF_STORAGE_KEY = 'subguard_notif_enabled';
+
+        // Pre-configured Presets Catalog
+        const PRESETS = [
+            { id: 'p1', name: 'ChatGPT Plus', category: 'AI & Práce', price: 20, currency: 'USD', cycle: 'monthly', trialDays: 14, icon: 'fa-robot', color: 'from-emerald-600 to-teal-600', cancelUrl: 'https://chat.openai.com/#settings' },
+            { id: 'p2', name: 'Canva Pro', category: 'AI & Práce', price: 329, currency: 'CZK', cycle: 'monthly', trialDays: 30, icon: 'fa-palette', color: 'from-cyan-600 to-blue-600', cancelUrl: 'https://www.canva.com/settings/billing' },
+            { id: 'p3', name: 'Netflix', category: 'Zábava', price: 379, currency: 'CZK', cycle: 'monthly', trialDays: 30, icon: 'fa-film', color: 'from-rose-600 to-red-700', cancelUrl: 'https://www.netflix.com/youraccount' },
+            { id: 'p4', name: 'Spotify Premium', category: 'Zábava', price: 169, currency: 'CZK', cycle: 'monthly', trialDays: 30, icon: 'fa-music', color: 'from-emerald-500 to-green-600', cancelUrl: 'https://www.spotify.com/account/subscription/' },
+            { id: 'p5', name: 'Adobe Creative Cloud', category: 'Software & Cloud', price: 1600, currency: 'CZK', cycle: 'monthly', trialDays: 7, icon: 'fa-pen-nib', color: 'from-red-600 to-orange-600', cancelUrl: 'https://account.adobe.com/plans' },
+            { id: 'p6', name: 'Duolingo Super', category: 'Vzdělávání', price: 189, currency: 'CZK', cycle: 'monthly', trialDays: 14, icon: 'fa-feather', color: 'from-green-500 to-emerald-600', cancelUrl: 'https://www.duolingo.com/settings/super' },
+            { id: 'p7', name: 'YouTube Premium', category: 'Zábava', price: 209, currency: 'CZK', cycle: 'monthly', trialDays: 30, icon: 'fa-youtube', color: 'from-red-600 to-rose-700', cancelUrl: 'https://www.youtube.com/paid_memberships' },
+            { id: 'p8', name: 'Disney+', category: 'Zábava', price: 239, currency: 'CZK', cycle: 'monthly', trialDays: 7, icon: 'fa-tv', color: 'from-blue-600 to-indigo-700', cancelUrl: 'https://www.disneyplus.com/account' },
+            { id: 'p9', name: 'Microsoft 365', category: 'Software & Cloud', price: 189, currency: 'CZK', cycle: 'monthly', trialDays: 30, icon: 'fa-windows', color: 'from-blue-500 to-cyan-600', cancelUrl: 'https://account.microsoft.com/services' },
+            { id: 'p10', name: 'PlayStation Plus', category: 'Zábava', price: 235, currency: 'CZK', cycle: 'monthly', trialDays: 14, icon: 'fa-gamepad', color: 'from-blue-700 to-indigo-900', cancelUrl: 'https://store.playstation.com/' },
+            { id: 'p11', name: 'Fitness / Posilovna', category: 'Fitness & Zdraví', price: 890, currency: 'CZK', cycle: 'monthly', trialDays: 7, icon: 'fa-dumbbell', color: 'from-amber-500 to-orange-600', cancelUrl: '' },
+            { id: 'p12', name: 'Midjourney', category: 'AI & Práce', price: 10, currency: 'USD', cycle: 'monthly', trialDays: 0, icon: 'fa-image', color: 'from-purple-600 to-indigo-700', cancelUrl: 'https://www.midjourney.com/account' }
+        ];
+
+        // Sample initial dataset in Czech
+        const DEMO_DATA = [
+            {
+                id: 'sub-1',
+                name: 'ChatGPT Plus',
+                category: 'AI & Práce',
+                price: 20,
+                currency: 'USD',
+                cycle: 'monthly',
+                status: 'trial',
+                date: getFutureDateStr(2), // Ends in 2 days (urgent)
+                remindDays: 3,
+                cancelUrl: 'https://chat.openai.com/#settings',
+                notes: 'Zkušební verze zadána při práci na projektu.'
+            },
+            {
+                id: 'sub-2',
+                name: 'Canva Pro',
+                category: 'AI & Práce',
+                price: 329,
+                currency: 'CZK',
+                cycle: 'monthly',
+                status: 'trial',
+                date: getFutureDateStr(1), // Ends in 1 day (urgent)
+                remindDays: 2,
+                cancelUrl: 'https://www.canva.com/settings/billing',
+                notes: 'Pozor na stržení z karty po 14 dnech.'
+            },
+            {
+                id: 'sub-3',
+                name: 'Netflix Premium',
+                category: 'Zábava',
+                price: 379,
+                currency: 'CZK',
+                cycle: 'monthly',
+                status: 'active',
+                date: getFutureDateStr(18),
+                remindDays: 3,
+                cancelUrl: 'https://www.netflix.com/youraccount',
+                notes: 'Sdílený rodinný účet.'
+            },
+            {
+                id: 'sub-4',
+                name: 'Adobe Creative Cloud',
+                category: 'Software & Cloud',
+                price: 1600,
+                currency: 'CZK',
+                cycle: 'monthly',
+                status: 'cancelled',
+                date: getFutureDateStr(-5),
+                remindDays: 3,
+                cancelUrl: 'https://account.adobe.com/plans',
+                notes: 'Ušetřeno po zrušení zkušebního týdne!'
+            }
+        ];
+
+        let subscriptions = [];
+        let currentFilter = 'all';
+        let categoryChartInstance = null;
+
+        // INITIALIZATION ON PAGE LOAD
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSubscriptions();
+            renderSidebarCatalog();
+            renderSubscriptions();
+            initNotificationsUI();
+
+            // Set default date picker in form to 7 days in future
+            document.getElementById('form-date').value = getFutureDateStr(7);
+        });
+
+        // Helper date utility functions
+        function getFutureDateStr(daysAhead) {
+            const d = new Date();
+            d.setDate(d.getDate() + daysAhead);
+            return d.toISOString().split('T')[0];
+        }
+
+        function calculateDaysRemaining(targetDateStr) {
+            if (!targetDateStr) return 0;
+            const target = new Date(targetDateStr);
+            target.setHours(0,0,0,0);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const diffTime = target - today;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
+
+        // Currency conversion for statistics (1 EUR = 25 CZK, 1 USD = 23 CZK)
+        function convertToCZK(amount, currency) {
+            const val = parseFloat(amount) || 0;
+            if (currency === 'EUR') return val * 25;
+            if (currency === 'USD') return val * 23;
+            return val;
+        }
+
+        function formatCurrency(amount, currency = 'CZK') {
+            const formatted = Math.round(amount).toLocaleString('cs-CZ');
+            if (currency === 'EUR') return `${formatted} €`;
+            if (currency === 'USD') return `${formatted} $`;
+            return `${formatted} Kč`;
+        }
+
+        // STORAGE MANAGEMENT
+        function loadSubscriptions() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    subscriptions = JSON.parse(stored);
+                } catch (e) {
+                    subscriptions = DEMO_DATA;
+                }
+            } else {
+                subscriptions = DEMO_DATA;
+                saveSubscriptions();
+            }
+        }
+
+        function saveSubscriptions() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
+            renderSubscriptions();
+        }
+
+        function resetDemoData() {
+            showConfirmDialog('Obnovit vzorová data?', 'Všechny stávající záznamy budou nahrazeny původními demo položkami.', () => {
+                subscriptions = [...DEMO_DATA];
+                saveSubscriptions();
+                showToast('Demo data byla obnovena', 'success');
+            });
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(subscriptions, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `subguard_export_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('Záloha byla stažena', 'info');
+        }
+
+        // FILTER MANAGEMENT
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById(`filter-tab-${filterType}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+            }
+            renderSubscriptions();
+        }
+
+        // RENDER MAIN SUBSCRIPTION CARDS
+        function renderSubscriptions() {
+            const container = document.getElementById('subscriptions-container');
+            const emptyState = document.getElementById('empty-state');
+            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+
+            container.innerHTML = '';
+
+            let totalMonthlyCZK = 0;
+            let activeTrialsCount = 0;
+            let urgentCount = 0;
+            let totalSavedCZK = 0;
+
+            let cntAll = subscriptions.length;
+            let cntActive = 0;
+            let cntUrgent = 0;
+            let cntCancelled = 0;
+
+            // Compute statistics & counts
+            subscriptions.forEach(sub => {
+                const daysLeft = calculateDaysRemaining(sub.date);
+                const monthlyCZK = convertToCZK(sub.cycle === 'yearly' ? sub.price / 12 : sub.price, sub.currency);
+
+                if (sub.status === 'active') {
+                    cntActive++;
+                    totalMonthlyCZK += monthlyCZK;
+                } else if (sub.status === 'trial') {
+                    cntActive++;
+                    activeTrialsCount++;
+                    if (daysLeft <= 3 && daysLeft >= 0) {
+                        cntUrgent++;
+                        urgentCount++;
+                    }
+                } else if (sub.status === 'cancelled') {
+                    cntCancelled++;
+                    totalSavedCZK += monthlyCZK;
+                }
+            });
+
+            // Update KPI Stats elements
+            document.getElementById('stat-total-monthly').innerText = formatCurrency(totalMonthlyCZK, 'CZK');
+            document.getElementById('stat-active-trials').innerText = activeTrialsCount;
+            document.getElementById('stat-ending-soon').innerText = urgentCount;
+            document.getElementById('stat-total-saved').innerText = formatCurrency(totalSavedCZK, 'CZK');
+
+            // Pulse effect for urgent card
+            const urgentCard = document.getElementById('stat-card-urgent');
+            if (urgentCount > 0) {
+                urgentCard.classList.add('pulse-urgent');
+            } else {
+                urgentCard.classList.remove('pulse-urgent');
+            }
+
+            // Update Filter Tab Counters
+            document.getElementById('cnt-all').innerText = cntAll;
+            document.getElementById('cnt-active').innerText = cntActive;
+            document.getElementById('cnt-urgent').innerText = cntUrgent;
+            document.getElementById('cnt-cancelled').innerText = cntCancelled;
+
+            // Filter subscriptions array
+            const filtered = subscriptions.filter(sub => {
+                const daysLeft = calculateDaysRemaining(sub.date);
+                const matchesSearch = sub.name.toLowerCase().includes(searchVal) || sub.category.toLowerCase().includes(searchVal);
+
+                if (!matchesSearch) return false;
+
+                if (currentFilter === 'active') return sub.status === 'active' || sub.status === 'trial';
+                if (currentFilter === 'urgent') return (sub.status === 'trial' || sub.status === 'active') && daysLeft <= 3 && daysLeft >= 0;
+                if (currentFilter === 'cancelled') return sub.status === 'cancelled';
+                return true; // 'all'
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+
+                // Sort by urgency (fewer days remaining first)
+                filtered.sort((a, b) => calculateDaysRemaining(a.date) - calculateDaysRemaining(b.date));
+
+                filtered.forEach(sub => {
+                    const daysLeft = calculateDaysRemaining(sub.date);
+                    const cardHtml = createSubscriptionCardHtml(sub, daysLeft);
+                    container.insertAdjacentHTML('beforeend', cardHtml);
+                });
+            }
+
+            updateCategoryChart();
+        }
+
+        // CREATE SINGLE CARD HTML
+        function createSubscriptionCardHtml(sub, daysLeft) {
+            let statusBadge = '';
+            let daysBadge = '';
+            let borderClass = 'border-slate-800';
+            let progressBg = 'bg-indigo-500';
+
+            if (sub.status === 'cancelled') {
+                statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-circle-check mr-1"></i>Zrušeno (Ušetřeno)</span>`;
+                daysBadge = `<span class="text-xs text-slate-500">Neúčtuje se</span>`;
+                borderClass = 'border-slate-800 opacity-75';
+            } else if (sub.status === 'trial') {
+                if (daysLeft <= 0) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Expirovalo nebezpečně</span>`;
+                    daysBadge = `<span class="text-xs font-bold text-rose-400">Dnes vypršelo!</span>`;
+                    borderClass = 'border-rose-500/50 bg-rose-950/10';
+                    progressBg = 'bg-rose-500';
+                } else if (daysLeft <= 3) {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"><i class="fa-solid fa-clock mr-1"></i>Trial končí brzy</span>`;
+                    daysBadge = `<span class="text-xs font-bold text-rose-400">Zbývají ${daysLeft} ${daysLeft === 1 ? 'den' : 'dny'}!</span>`;
+                    borderClass = 'border-rose-500/40 bg-rose-950/10';
+                    progressBg = 'bg-rose-500';
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-hourglass-half mr-1"></i>Aktivní Trial</span>`;
+                    daysBadge = `<span class="text-xs font-medium text-amber-300">Zbývá ${daysLeft} dní</span>`;
+                    progressBg = 'bg-amber-500';
+                }
+            } else { // active
+                statusBadge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"><i class="fa-solid fa-rotate mr-1"></i>Aktivní předplatné</span>`;
+                daysBadge = `<span class="text-xs text-slate-400">Platba za ${daysLeft} dní</span>`;
+            }
+
+            // Find icon preset match
+            const preset = PRESETS.find(p => p.name.toLowerCase() === sub.name.toLowerCase());
+            const iconClass = preset ? preset.icon : 'fa-credit-card';
+
+            // Direct cancel link button HTML
+            const cancelBtn = sub.cancelUrl 
+                ? `<a href="${sub.cancelUrl}" target="_blank" onclick="promptMarkCancelled('${sub.id}', '${sub.name}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-indigo-400 text-[10px]"></i>
+                        <span>Zrušit na webu</span>
+                   </a>`
+                : '';
+
+            const toggleActionBtn = sub.status === 'cancelled'
+                ? `<button onclick="toggleSubStatus('${sub.id}', 'active')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition">Obnovit</button>`
+                : `<button onclick="toggleSubStatus('${sub.id}', 'cancelled')" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1">
+                        <i class="fa-solid fa-check text-[10px]"></i>
+                        <span>Označit jako zrušené</span>
+                   </button>`;
+
+            return `
+                <div class="glass-card rounded-2xl p-4.5 border ${borderClass} transition-all">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        
+                        <!-- Left Info -->
+                        <div class="flex items-start space-x-3.5">
+                            <div class="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700/80 flex items-center justify-center text-indigo-400 text-lg flex-shrink-0 shadow-inner">
+                                <i class="fa-solid ${iconClass}"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <h4 class="text-sm font-bold text-white tracking-wide">${escapeHtml(sub.name)}</h4>
+                                    ${statusBadge}
+                                </div>
+                                <div class="flex items-center space-x-3 text-xs text-slate-400 mt-1">
+                                    <span class="bg-slate-800/80 px-2 py-0.5 rounded text-[10px] text-slate-300">${sub.category}</span>
+                                    <span>&bull;</span>
+                                    <span class="font-semibold text-slate-200">${formatCurrency(sub.price, sub.currency)} / ${sub.cycle === 'monthly' ? 'měsíc' : sub.cycle === 'yearly' ? 'rok' : 'trial'}</span>
+                                </div>
+                                ${sub.notes ? `<p class="text-[11px] text-slate-400 mt-1 font-sans italic"><i class="fa-regular fa-note-sticky mr-1"></i>${escapeHtml(sub.notes)}</p>` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Right Actions & Countdown -->
+                        <div class="flex flex-col sm:items-end justify-between gap-2 border-t sm:border-t-0 border-slate-800 pt-3 sm:pt-0">
+                            <div>${daysBadge}</div>
+                            <div class="flex items-center space-x-2">
+                                ${cancelBtn}
+                                ${toggleActionBtn}
+                                <button onclick="editSub('${sub.id}')" class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition" title="Upravit">
+                                    <i class="fa-solid fa-pen text-xs"></i>
+                                </button>
+                                <button onclick="deleteSub('${sub.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition" title="Smazat">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        // QUICK CATALOG RENDER
+        function renderSidebarCatalog() {
+            const sidebarGrid = document.getElementById('sidebar-preset-grid');
+            const fullGrid = document.getElementById('full-catalog-grid');
+            
+            sidebarGrid.innerHTML = '';
+            fullGrid.innerHTML = '';
+
+            // Render top 4 in sidebar
+            PRESETS.slice(0, 4).forEach(p => {
+                sidebarGrid.insertAdjacentHTML('beforeend', `
+                    <button onclick="addPreset('${p.id}')" class="p-2.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-xl text-left transition flex items-center space-x-2.5 group">
+                        <div class="w-8 h-8 rounded-lg bg-slate-800 group-hover:bg-indigo-600 text-indigo-400 group-hover:text-white flex items-center justify-center text-xs transition">
+                            <i class="fa-solid ${p.icon}"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="text-xs font-semibold text-slate-200 truncate">${p.name}</div>
+                            <div class="text-[10px] text-slate-500">${p.trialDays > 0 ? p.trialDays + ' dní trial' : formatCurrency(p.price, p.currency)}</div>
+                        </div>
+                    </button>
+                `);
+            });
+
+            // Render all in full catalog modal
+            PRESETS.forEach(p => {
+                fullGrid.insertAdjacentHTML('beforeend', `
+                    <div class="glass-panel p-3.5 rounded-xl border border-slate-800 flex items-center justify-between gap-2 hover:border-slate-700 transition">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-xl bg-slate-800 text-indigo-400 flex items-center justify-center text-sm">
+                                <i class="fa-solid ${p.icon}"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">${p.name}</h4>
+                                <p class="text-[10px] text-slate-400">${p.category} &bull; ${formatCurrency(p.price, p.currency)}</p>
+                            </div>
+                        </div>
+                        <button onclick="addPreset('${p.id}'); closeCatalogModal();" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition">
+                            + Přidat
+                        </button>
+                    </div>
+                `);
+            });
+        }
+
+        // ADD PRESET TO ACTIVE LIST
+        function addPreset(presetId) {
+            const p = PRESETS.find(item => item.id === presetId);
+            if (!p) return;
+
+            const newSub = {
+                id: 'sub-' + Date.now(),
+                name: p.name,
+                category: p.category,
+                price: p.price,
+                currency: p.currency,
+                cycle: p.cycle,
+                status: p.trialDays > 0 ? 'trial' : 'active',
+                date: getFutureDateStr(p.trialDays > 0 ? p.trialDays : 30),
+                remindDays: 3,
+                cancelUrl: p.cancelUrl,
+                notes: `Přidáno z katalogu (${p.trialDays > 0 ? p.trialDays + ' dní trial' : 'předplatné'}).`
+            };
+
+            subscriptions.unshift(newSub);
+            saveSubscriptions();
+            showToast(`Služba ${p.name} byla úspěšně přidána`, 'success');
+        }
+
+        // FORM HANDLERS (ADD / EDIT)
+        function openAddModal() {
+            document.getElementById('form-sub-id').value = '';
+            document.getElementById('modal-title').innerText = 'Přidat nové předplatné';
+            document.getElementById('modal-icon').className = 'fa-solid fa-plus';
+            document.getElementById('sub-form').reset();
+            document.getElementById('form-date').value = getFutureDateStr(7);
+            document.getElementById('add-edit-modal').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-edit-modal').classList.add('hidden');
+        }
+
+        function editSub(subId) {
+            const sub = subscriptions.find(s => s.id === subId);
+            if (!sub) return;
+
+            document.getElementById('form-sub-id').value = sub.id;
+            document.getElementById('modal-title').innerText = 'Upravit službu';
+            document.getElementById('modal-icon').className = 'fa-solid fa-pen';
+
+            document.getElementById('form-name').value = sub.name;
+            document.getElementById('form-category').value = sub.category;
+            document.getElementById('form-price').value = sub.price;
+            document.getElementById('form-currency').value = sub.currency;
+            document.getElementById('form-cycle').value = sub.cycle;
+            document.getElementById('form-status').value = sub.status;
+            document.getElementById('form-date').value = sub.date;
+            document.getElementById('form-remind').value = sub.remindDays || 3;
+            document.getElementById('form-cancel-url').value = sub.cancelUrl || '';
+            document.getElementById('form-notes').value = sub.notes || '';
+
+            document.getElementById('add-edit-modal').classList.remove('hidden');
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const subId = document.getElementById('form-sub-id').value;
+
+            const subData = {
+                id: subId ? subId : 'sub-' + Date.now(),
+                name: document.getElementById('form-name').value.trim(),
+                category: document.getElementById('form-category').value,
+                price: parseFloat(document.getElementById('form-price').value) || 0,
+                currency: document.getElementById('form-currency').value,
+                cycle: document.getElementById('form-cycle').value,
+                status: document.getElementById('form-status').value,
+                date: document.getElementById('form-date').value,
+                remindDays: parseInt(document.getElementById('form-remind').value) || 3,
+                cancelUrl: document.getElementById('form-cancel-url').value.trim(),
+                notes: document.getElementById('form-notes').value.trim()
+            };
+
+            if (subId) {
+                const idx = subscriptions.findIndex(s => s.id === subId);
+                if (idx !== -1) subscriptions[idx] = subData;
+            } else {
+                subscriptions.unshift(subData);
+            }
+
+            saveSubscriptions();
+            closeAddModal();
+            showToast(subId ? 'Předplatné uloženo' : 'Nové předplatné bylo vytvořeno', 'success');
+        }
+
+        function toggleSubStatus(subId, newStatus) {
+            const sub = subscriptions.find(s => s.id === subId);
+            if (!sub) return;
+
+            sub.status = newStatus;
+            saveSubscriptions();
+
+            if (newStatus === 'cancelled') {
+                showToast(`Služba ${sub.name} byla označena jako zrušená`, 'success');
+            } else {
+                showToast(`Služba ${sub.name} byla obnovena`, 'info');
+            }
+        }
+
+        function deleteSub(subId) {
+            const sub = subscriptions.find(s => s.id === subId);
+            if (!sub) return;
+
+            showConfirmDialog(`Smazat ${sub.name}?`, 'Tato akce trvale odstraní položku ze seznamu.', () => {
+                subscriptions = subscriptions.filter(s => s.id !== subId);
+                saveSubscriptions();
+                showToast('Položka byla smazána', 'info');
+            });
+        }
+
+        function promptMarkCancelled(subId, name) {
+            setTimeout(() => {
+                showConfirmDialog(`Zrušili jste ${name}?`, 'Pokud jste službu úspěšně zrušili na webu, označte ji jako zrušenou v SubGuard, abyste viděli své úspory.', () => {
+                    toggleSubStatus(subId, 'cancelled');
+                });
+            }, 1000);
+        }
+
+        // AI / SMART TEXT RECEIPT PARSER
+        function openAiModal() {
+            document.getElementById('ai-email-text').value = '';
+            document.getElementById('ai-modal').classList.remove('hidden');
+        }
+        function closeAiModal() {
+            document.getElementById('ai-modal').classList.add('hidden');
+        }
+
+        function parseEmailText() {
+            const text = document.getElementById('ai-email-text').value;
+            if (!text.trim()) {
+                showToast('Vložte prosím text e-mailu ke skenování', 'warning');
+                return;
+            }
+
+            // Simple Smart Pattern Matcher
+            let detectedName = 'Nová služba';
+            let detectedPrice = 0;
+            let detectedCurrency = 'CZK';
+            let detectedDate = getFutureDateStr(14);
+
+            // Match Popular Service Names
+            PRESETS.forEach(p => {
+                if (text.toLowerCase().includes(p.name.toLowerCase())) {
+                    detectedName = p.name;
+                }
+            });
+
+            // Match Price & Currency Regex (e.g. 329 Kč, 20 USD, 9.99 €)
+            const priceRegex = /(\d+[\.,]?\d*)\s*(Kč|CZK|EUR|€|USD|\$)/i;
+            const priceMatch = text.match(priceRegex);
+            if (priceMatch) {
+                detectedPrice = parseFloat(priceMatch[1].replace(',', '.'));
+                const currStr = priceMatch[2].toUpperCase();
+                if (currStr === 'EUR' || currStr === '€') detectedCurrency = 'EUR';
+                else if (currStr === 'USD' || currStr === '$') detectedCurrency = 'USD';
+                else detectedCurrency = 'CZK';
+            }
+
+            // Match Dates (e.g. 25. 10. 2026 or 2026-10-25)
+            const dateRegex = /(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})/;
+            const dateMatch = text.match(dateRegex);
+            if (dateMatch) {
+                const day = dateMatch[1].padStart(2, '0');
+                const month = dateMatch[2].padStart(2, '0');
+                const year = dateMatch[3];
+                detectedDate = `${year}-${month}-${day}`;
+            }
+
+            closeAiModal();
+
+            // Populate Form and Open Add Modal
+            openAddModal();
+            document.getElementById('form-name').value = detectedName;
+            document.getElementById('form-price').value = detectedPrice || 299;
+            document.getElementById('form-currency').value = detectedCurrency;
+            document.getElementById('form-date').value = detectedDate;
+            document.getElementById('form-notes').value = 'Automaticky rozpoznáno z e-mailu přes AI Sken.';
+
+            showToast('E-mail byl rozpoznán! Zkontrolujte předvyplněné údaje.', 'success');
+        }
+
+        // GUIDES & MODALS
+        function openGuideModal() { document.getElementById('guide-modal').classList.remove('hidden'); }
+        function closeGuideModal() { document.getElementById('guide-modal').classList.add('hidden'); }
+        function openCatalogModal() { document.getElementById('catalog-modal').classList.remove('hidden'); }
+        function closeCatalogModal() { document.getElementById('catalog-modal').classList.add('hidden'); }
+
+        // CHART.JS CATEGORY BREAKDOWN
+        function updateCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+
+            const categories = {};
+            subscriptions.forEach(sub => {
+                if (sub.status !== 'cancelled') {
+                    const monthlyCZK = convertToCZK(sub.cycle === 'yearly' ? sub.price / 12 : sub.price, sub.currency);
+                    categories[sub.category] = (categories[sub.category] || 0) + monthlyCZK;
+                }
+            });
+
+            const labels = Object.keys(categories);
+            const data = Object.values(categories);
+
+            if (categoryChartInstance) {
+                categoryChartInstance.destroy();
+            }
+
+            if (labels.length === 0) {
+                // Empty state donut chart
+                categoryChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Žádná předplatná'],
+                        datasets: [{ data: [1], backgroundColor: ['#334155'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+                return;
+            }
+
+            categoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#6366f1', // indigo
+                            '#a855f7', // purple
+                            '#ec4899', // pink
+                            '#10b981', // emerald
+                            '#f59e0b', // amber
+                            '#06b6d4'  // cyan
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#0f172a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', font: { size: 10, family: 'Inter' }, padding: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${Math.round(context.raw)} Kč / měs.`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // BROWSER NOTIFICATION TOGGLE & TOAST SYSTEM
+        function initNotificationsUI() {
+            const enabled = localStorage.getItem(NOTIF_STORAGE_KEY) === 'true';
+            updateNotifButtonUI(enabled);
+        }
+
+        function toggleNotifications() {
+            const current = localStorage.getItem(NOTIF_STORAGE_KEY) === 'true';
+            if (!current) {
+                if ("Notification" in window) {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            localStorage.setItem(NOTIF_STORAGE_KEY, 'true');
+                            updateNotifButtonUI(true);
+                            showToast('Webové notifikace byly zapnuty', 'success');
+                            new Notification("SubGuard Aktivován", { body: "Budeme vás včas varovat před vypršením zkušebních lhůt!" });
+                        } else {
+                            showToast('Povolení pro notifikace bylo zamítnuto', 'warning');
+                        }
+                    });
+                } else {
+                    showToast('Tento prohlížeč nepodporuje webové notifikace', 'warning');
+                }
+            } else {
+                localStorage.setItem(NOTIF_STORAGE_KEY, 'false');
+                updateNotifButtonUI(false);
+                showToast('Upozornění byla vypnuta', 'info');
+            }
+        }
+
+        function updateNotifButtonUI(enabled) {
+            const icon = document.getElementById('notif-icon');
+            const text = document.getElementById('notif-text');
+            if (enabled) {
+                icon.className = 'fa-solid fa-bell text-amber-400';
+                text.innerText = 'Upozornění: Zapnuto';
+            } else {
+                icon.className = 'fa-regular fa-bell text-slate-400';
+                text.innerText = 'Upozornění: Vypnuto';
+            }
+        }
+
+        // CUSTOM TOAST NOTIFICATION
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgClass = 'bg-slate-900 border-slate-700 text-slate-200';
+            let iconClass = 'fa-circle-info text-indigo-400';
+
+            if (type === 'success') {
+                bgClass = 'bg-slate-900 border-emerald-500/50 text-white';
+                iconClass = 'fa-circle-check text-emerald-400';
+            } else if (type === 'warning') {
+                bgClass = 'bg-slate-900 border-amber-500/50 text-white';
+                iconClass = 'fa-triangle-exclamation text-amber-400';
+            }
+
+            toast.className = `glass-panel ${bgClass} border px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-xs pointer-events-auto transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-sm"></i>
+                <span class="font-medium">${escapeHtml(message)}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // CUSTOM DIALOG REPLACING alert() / confirm()
+        function showConfirmDialog(title, message, onConfirm) {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+
+            const btnOk = document.getElementById('confirm-btn-ok');
+            const btnCancel = document.getElementById('confirm-btn-cancel');
+
+            const cleanUp = () => {
+                modal.classList.add('hidden');
+                btnOk.onclick = null;
+                btnCancel.onclick = null;
+            };
+
+            btnOk.onclick = () => {
+                cleanUp();
+                if (onConfirm) onConfirm();
+            };
+
+            btnCancel.onclick = () => {
+                cleanUp();
+            };
+
+            modal.classList.remove('hidden');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
